@@ -1,0 +1,12 @@
+[project]
+name = "sc-listenbrainz"
+version = "0.1.0"
+description = "Submit SoundCloud play history to ListenBrainz"
+requires-python = ">=3.10"
+dependencies = ["soundcloud-v2>=1.6", "requests"]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
