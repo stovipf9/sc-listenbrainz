@@ -22,7 +22,9 @@ from soundcloud import SoundCloud
 
 LB = "https://api.listenbrainz.org/1"
 SC_HISTORY_DEPTH = 300  # history items read from SoundCloud
-LB_LOOKBACK = 1000  # listens read from ListenBrainz for matching (API maximum)
+LB_LOOKBACK = 100  # listens read from ListenBrainz for matching
+LB_GET_TIMEOUT = 60  # seconds; responses measured from 1.5 to over 40
+LB_GET_ATTEMPTS = 3
 CLIENT = "sc-listenbrainz"
 MUSIC_SERVICE = "soundcloud.com"
 
@@ -113,9 +115,22 @@ def lb_headers(token: str) -> dict:
     return {"Authorization": f"Token {token}"}
 
 
+def lb_get(path: str, token: str, **params) -> requests.Response:
+    """GET from ListenBrainz, retrying on timeouts and dropped connections."""
+    for attempt in range(1, LB_GET_ATTEMPTS + 1):
+        try:
+            r = requests.get(f"{LB}{path}", params=params, headers=lb_headers(token), timeout=LB_GET_TIMEOUT)
+            r.raise_for_status()
+            return r
+        except (requests.Timeout, requests.ConnectionError) as e:
+            if attempt == LB_GET_ATTEMPTS:
+                raise
+            print(f"ListenBrainz {path}: {e.__class__.__name__}, retrying ({attempt}/{LB_GET_ATTEMPTS})")
+            time.sleep(5 * attempt)
+
+
 def lb_username(token: str) -> str:
-    r = requests.get(f"{LB}/validate-token", headers=lb_headers(token), timeout=30)
-    r.raise_for_status()
+    r = lb_get("/validate-token", token)
     body = r.json()
     if not body.get("valid"):
         sys.exit("LISTENBRAINZ_TOKEN is invalid")
@@ -123,14 +138,7 @@ def lb_username(token: str) -> str:
 
 
 def lb_listens(token: str, user: str) -> list[dict]:
-    r = requests.get(
-        f"{LB}/user/{user}/listens",
-        params={"count": LB_LOOKBACK},
-        headers=lb_headers(token),
-        timeout=30,
-    )
-    r.raise_for_status()
-    return r.json()["payload"]["listens"]
+    return lb_get(f"/user/{user}/listens", token, count=LB_LOOKBACK).json()["payload"]["listens"]
 
 
 def submit(token: str, listen_type: str, payload: list[dict]) -> None:

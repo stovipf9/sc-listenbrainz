@@ -41,10 +41,15 @@ Or without cloning:
 uv run --script https://raw.githubusercontent.com/stovipf9/sc-listenbrainz/main/sc_listenbrainz.py
 ```
 
-The first run imports the history it can see: 300 plays, matched against the
-last 1000 listens on ListenBrainz from any service. Plays older than that
-window are not judged, and the script prints how many. After that, run it as
-often as you like — daily is enough unless you replay tracks a lot.
+Each run reads 300 plays from SoundCloud and matches them against the last 100
+listens on ListenBrainz from any service. Plays older than that window are not
+judged, and the script prints how many. So the window has to cover every
+listen, from any service, since the previous successful run; daily runs stay
+well inside it unless you listen to around 100 tracks a day. For the same
+reason the first run imports only the plays newer than your 100th most recent
+listen. To import more, raise `LB_LOOKBACK` (the API allows up to 1000) for
+that one run. After that, run it as often as you like — daily is enough unless
+you replay tracks a lot.
 
 The `oauth_token` changes when you log out and back in; the script exits
 with a message when it is invalid.
